@@ -103,4 +103,18 @@ class RepositoryTableViewCell: UITableViewCell {
         
         ownerIcon.layer.cornerRadius = 40
     }
+    
+    func config(item: RepositoryItemModel) {
+        repositoryNameLabel.text = item.full_name
+        descriptionLabel.text = item.description
+    }
+    
+    func configIcon(data: Data?) {
+        guard let data = data else {
+            self.ownerIcon.image = UIImage(systemName: "questionmark.app")
+            return }
+        DispatchQueue.main.async {
+            self.ownerIcon.image = UIImage(data: data)
+        }
+    }
 }

@@ -91,7 +91,39 @@ class SearchView: UIView {
     }
     
     private func bind(viewModel: SearchViewModel) {
-       
+        searchBar.textDidChangePublisher
+            .sink { text in
+                guard !text.isEmpty else {
+                    viewModel.input.searchBarTextRemove.send()
+                    return }
+                viewModel.input.searchBarTextDidChange.send(text)
+            }
+            .store(in: &cancellables)
+        
+        searchBar.searchButtonClickedPublisher
+            .sink { [weak self] in
+                guard let self = self else { return }
+                self.activityIndicatorView.startAnimating()
+                viewModel.input.searchBarSearchButtonClicked.send()
+                self.searchBar.resignFirstResponder()
+            }
+            .store(in: &cancellables)
+        
+        refreshControl.isRefreshingPublisher
+            .sink { _ in
+                self.refreshControl.endRefreshing()
+            }
+            .store(in: &cancellables)
+        
+        viewModel.output.reloadRepositoryTableView
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.repositoryTableView.reloadData()
+                    self.activityIndicatorView.stopAnimating()
+                }
+            }
+            .store(in: &cancellables)
     }
 }
 
@@ -102,12 +134,30 @@ extension SearchView: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        0
+        viewModel.numberOfRepositoryItem()
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "RepositoryTableViewCell", for: indexPath) as? RepositoryTableViewCell else { return UITableViewCell() }
         
+        cell.config(item: viewModel.fetchRepositoryItem(indexPath: indexPath))
+        Task {
+            await cell.configIcon(data: viewModel.fetchOwnerIcon(indexPath: indexPath))
+        }
+        
         return cell
+    }
+    
+    // 讓 header 可以跟著滑動
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if scrollView == repositoryTableView {
+            let offsetY = scrollView.contentOffset.y
+            let searchBarHeight = searchBar.frame.size.height
+            if offsetY <= searchBarHeight && offsetY >= 0 {
+                scrollView.contentInset = UIEdgeInsets(top: -scrollView.contentOffset.y, left: 0, bottom: 0, right: 0)
+            } else if offsetY >= searchBarHeight {
+                scrollView.contentInset = UIEdgeInsets(top: -searchBarHeight, left: 0, bottom: 0, right: 0)
+            }
+        }
     }
 }
