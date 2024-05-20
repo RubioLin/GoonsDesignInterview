@@ -4,7 +4,7 @@ import Combine
 import CombineCocoa
 
 protocol SearchControllerDelegate: AnyObject {
-    
+    func showAlert()
 }
 
 class SearchView: UIView {
@@ -110,20 +110,32 @@ class SearchView: UIView {
             .store(in: &cancellables)
         
         refreshControl.isRefreshingPublisher
-            .sink { _ in
-                self.refreshControl.endRefreshing()
+            .sink { isRefreshing in
+                guard isRefreshing else { return }
+                viewModel.input.refreshControlIsRefreshing.send()
             }
             .store(in: &cancellables)
         
         viewModel.output.reloadRepositoryTableView
-            .sink { [weak self] _ in
+            .sink { [weak self] in
                 guard let self = self else { return }
                 DispatchQueue.main.async {
                     self.repositoryTableView.reloadData()
                     self.activityIndicatorView.stopAnimating()
+                    self.refreshControl.endRefreshing()
                 }
             }
             .store(in: &cancellables)
+        
+        viewModel.output.urlIsInvalid
+            .sink { [weak self] in
+                self?.delegate?.showAlert()
+            }
+            .store(in: &cancellables)
+    }
+    
+    func endRefreshing() {
+        refreshControl.endRefreshing()
     }
 }
 

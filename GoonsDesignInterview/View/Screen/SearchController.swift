@@ -30,5 +30,15 @@ class SearchController: UIViewController {
 }
 
 extension SearchController: SearchControllerDelegate {
-    
+    func showAlert() {
+        let alert = UIAlertController(title: "Oops!",
+                                      message: "The data couldn't be read because it is missing.",
+                                      preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Ok", style: .default, handler: { _ in
+            self.ownView.endRefreshing()
+        }))
+        
+        present(alert, animated: true)
+    }
 }

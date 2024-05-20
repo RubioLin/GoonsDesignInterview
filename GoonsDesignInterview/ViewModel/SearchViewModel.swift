@@ -11,13 +11,16 @@ class SearchViewModel {
         let searchBarTextDidChange: PassthroughSubject<String, Never>
         let searchBarTextRemove: PassthroughSubject<Void, Never>
         let searchBarSearchButtonClicked: PassthroughSubject<Void, Never>
+        let refreshControlIsRefreshing: PassthroughSubject<Void, Never>
     }
     
     struct Output {
         let reloadRepositoryTableView: AnyPublisher<Void, Never>
+        let urlIsInvalid:AnyPublisher<Void, Never>
     }
     
     private let reloadRepositoryTableView = CurrentValueSubject<Void, Never>(())
+    private let urlIsInvalid = CurrentValueSubject<Void, Never>(())
     
     init() {
         
@@ -34,6 +37,7 @@ class SearchViewModel {
         searchBarTextRemove
             .sink { [weak self] in
                 guard let self = self else { return }
+                self.query = ""
                 self.items.removeAll()
                 self.reloadRepositoryTableView.send()
             }
@@ -50,13 +54,29 @@ class SearchViewModel {
             }
             .store(in: &cancellables)
         
+        let refreshControlIsRefreshing = PassthroughSubject<Void, Never>()
+        refreshControlIsRefreshing
+            .sink { [weak self] in
+                guard let self = self else { return }
+                guard query.isEmpty else { 
+                    Task {
+                        await self.searchRepository(query: self.query)
+                        self.reloadRepositoryTableView.send()
+                    }
+                    return }
+                self.urlIsInvalid.send()
+            }
+            .store(in: &cancellables)
+        
         input = Input(searchBarTextDidChange: searchBarTextDidChange,
                       searchBarTextRemove: searchBarTextRemove,
-                      searchBarSearchButtonClicked: searchBarSearchButtonClicked)
+                      searchBarSearchButtonClicked: searchBarSearchButtonClicked,
+                      refreshControlIsRefreshing: refreshControlIsRefreshing)
         
         // Output
         
-        output = Output(reloadRepositoryTableView: self.reloadRepositoryTableView.eraseToAnyPublisher())
+        output = Output(reloadRepositoryTableView: self.reloadRepositoryTableView.eraseToAnyPublisher(),
+                        urlIsInvalid: self.urlIsInvalid.eraseToAnyPublisher())
     }
     
     deinit {
