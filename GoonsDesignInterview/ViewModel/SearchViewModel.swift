@@ -12,15 +12,18 @@ class SearchViewModel {
         let searchBarTextRemove: PassthroughSubject<Void, Never>
         let searchBarSearchButtonClicked: PassthroughSubject<Void, Never>
         let refreshControlIsRefreshing: PassthroughSubject<Void, Never>
+        let didSelectRowAt: PassthroughSubject<IndexPath, Never>
     }
     
     struct Output {
         let reloadRepositoryTableView: AnyPublisher<Void, Never>
-        let urlIsInvalid:AnyPublisher<Void, Never>
+        let urlIsInvalid: AnyPublisher<Void, Never>
+        let pushDetailViewController: AnyPublisher<RepositoryItemModel?, Never>
     }
     
     private let reloadRepositoryTableView = CurrentValueSubject<Void, Never>(())
     private let urlIsInvalid = CurrentValueSubject<Void, Never>(())
+    private let pushDetailViewController = CurrentValueSubject<RepositoryItemModel?, Never>(nil)
     
     init() {
         
@@ -68,15 +71,25 @@ class SearchViewModel {
             }
             .store(in: &cancellables)
         
+        let didSelectRowAt = PassthroughSubject<IndexPath, Never>()
+        didSelectRowAt
+            .sink { [weak self] indexPath in
+                guard let self = self else { return }
+                pushDetailViewController.send(fetchRepositoryItem(indexPath: indexPath))
+            }
+            .store(in: &cancellables)
+        
         input = Input(searchBarTextDidChange: searchBarTextDidChange,
                       searchBarTextRemove: searchBarTextRemove,
                       searchBarSearchButtonClicked: searchBarSearchButtonClicked,
-                      refreshControlIsRefreshing: refreshControlIsRefreshing)
+                      refreshControlIsRefreshing: refreshControlIsRefreshing,
+                      didSelectRowAt: didSelectRowAt)
         
         // Output
         
-        output = Output(reloadRepositoryTableView: self.reloadRepositoryTableView.eraseToAnyPublisher(),
-                        urlIsInvalid: self.urlIsInvalid.eraseToAnyPublisher())
+        output = Output(reloadRepositoryTableView: reloadRepositoryTableView.eraseToAnyPublisher(),
+                        urlIsInvalid: urlIsInvalid.eraseToAnyPublisher(),
+                        pushDetailViewController: pushDetailViewController.eraseToAnyPublisher())
     }
     
     deinit {
@@ -104,9 +117,9 @@ class SearchViewModel {
         items = repository?.items ?? []
     }
     
-    func fetchOwnerIcon(indexPath: IndexPath) async -> Data? {
+    func fetchOwnerIcon(indexPath: IndexPath) async -> Data? {        
         let item = items[indexPath.row]
-        guard let avatarUrlString = item.owner.avatar_url else { return nil }
+        guard let avatarUrlString = item.owner.avatarUrl else { return nil }
         guard let request = apiMangaer.createRequest(url: avatarUrlString) else { return nil }
         return await apiMangaer.operateRequest(request: request)
     }

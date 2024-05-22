@@ -105,7 +105,7 @@ class RepositoryTableViewCell: UITableViewCell {
     }
     
     func config(item: RepositoryItemModel) {
-        repositoryNameLabel.text = item.full_name
+        repositoryNameLabel.text = item.fullName
         descriptionLabel.text = item.description
     }
     

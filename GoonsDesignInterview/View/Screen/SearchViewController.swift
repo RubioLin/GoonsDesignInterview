@@ -1,6 +1,6 @@
 import UIKit
 
-class SearchController: UIViewController {
+class SearchViewController: UIViewController {
     
     // MARK: - Init
     
@@ -29,7 +29,7 @@ class SearchController: UIViewController {
     }
 }
 
-extension SearchController: SearchControllerDelegate {
+extension SearchViewController: SearchControllerDelegate {
     func showAlert() {
         let alert = UIAlertController(title: "Oops!",
                                       message: "The data couldn't be read because it is missing.",
@@ -40,5 +40,10 @@ extension SearchController: SearchControllerDelegate {
         }))
         
         present(alert, animated: true)
+    }
+    
+    func push(item: RepositoryItemModel) {
+        let controller = DetailViewController(item: item)
+        navigationController?.pushViewController(controller, animated: true)
     }
 }

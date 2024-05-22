@@ -5,6 +5,7 @@ import CombineCocoa
 
 protocol SearchControllerDelegate: AnyObject {
     func showAlert()
+    func push(item: RepositoryItemModel)
 }
 
 class SearchView: UIView {
@@ -132,6 +133,13 @@ class SearchView: UIView {
                 self?.delegate?.showAlert()
             }
             .store(in: &cancellables)
+        
+        viewModel.output.pushDetailViewController
+            .sink { [weak self] item in
+                guard let item = item else { return }
+                self?.delegate?.push(item: item)
+            }
+            .store(in: &cancellables)
     }
     
     func endRefreshing() {
@@ -160,9 +168,14 @@ extension SearchView: UITableViewDelegate, UITableViewDataSource {
         return cell
     }
     
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        viewModel.input.didSelectRowAt.send(indexPath)
+    }
+    
     // 讓 header 可以跟著滑動
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView == repositoryTableView {
+            searchBar.resignFirstResponder()
             let offsetY = scrollView.contentOffset.y
             let searchBarHeight = searchBar.frame.size.height
             if offsetY <= searchBarHeight && offsetY >= 0 {
